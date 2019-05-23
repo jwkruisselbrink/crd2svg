@@ -1,12 +1,19 @@
 import svgwrite
+import os
+import re
+import math
 
 def readShape(filename):
     coordinates = []
     xyz = open(filename)
-    name = xyz.readline().strip()
+    name = os.path.splitext(os.path.basename(filename))[0]
+    regex = re.compile(r"^\s*name:", re.IGNORECASE)
     for line in xyz:
-        x,y = line.split()
-        coordinates.append([float(x), float(y)])
+        if regex.match(line):
+            name = regex.sub('', line).strip()
+        else:
+            x,y = line.split()
+            coordinates.append([float(x), float(y)])
     xyz.close()
     return {
         "name": name,
@@ -43,6 +50,11 @@ def drawPolygon(dwg, shape, stroke_width):
         stroke_width = stroke_width
     ))
     polygon.fill('green', opacity=0.5)
+    text = g.add(dwg.text(shape['name'],
+        insert=centroid(shape['coordinates']),
+        font_size=12*stroke_width,
+        font_family="Arial")
+    )
     return polygon
 
 def createSvg(shapes, filename):
@@ -54,7 +66,6 @@ def createSvg(shapes, filename):
     strokeWidth = min(viewHeight, viewWidth) * .003
     dwg = svgwrite.Drawing(filename=filename)
     dwg.viewbox(xMin - viewMarginX, yMin - viewMarginY, viewWidth, viewHeight)
-    #dwg.viewbox(xMin - margin, yMin - margin, 300,300)
     for shape in shapes:
         points = shape['coordinates']
         if len(points) == 1:
@@ -66,7 +77,7 @@ def createSvg(shapes, filename):
     dwg.save(pretty=True)
 
 def minimax(shapes):
-    xMin, xMax, yMin, yMax = (0, 0, 0, 0)
+    xMin, xMax, yMin, yMax = (math.inf, -math.inf, math.inf, -math.inf)
     for shape in shapes:
         points = shape['coordinates']
         for point in points:
@@ -77,6 +88,14 @@ def minimax(shapes):
     xMax = xMax if xMin < xMax else xMax
     yMax = yMax if yMin < yMax else yMax
     return (xMin, xMax, yMin, yMax)
+
+def centroid(vertexes):
+    _x_list = [vertex [0] for vertex in vertexes]
+    _y_list = [vertex [1] for vertex in vertexes]
+    _len = len(vertexes)
+    _x = sum(_x_list) / _len
+    _y = sum(_y_list) / _len
+    return(_x, _y)
 
 import argparse
 from os import listdir
